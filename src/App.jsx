@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { BookOpen, FileText, Languages, ChevronRight, LayoutDashboard, Play, Pause, Square, Flame, Plus, RotateCcw, CheckCircle, Trash2, Sparkles, ArrowLeft, Volume2 } from 'lucide-react'
+import API_BASE_URL from './apiConfig'
 import './App.css'
 
-const API_URL = 'http://localhost:5000/api'
+const API_URL = `${API_BASE_URL}/api`
 
 const speak = (text) => {
   if ('speechSynthesis' in window) {

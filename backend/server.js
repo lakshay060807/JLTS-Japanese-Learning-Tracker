@@ -268,7 +268,11 @@ app.delete('/api/sessions/:id', async (req, res) => {
     res.status(500).json({ error: 'Server Error' });
   }
 });
+// Conditional listen for local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-});
+export default app;
