@@ -13,11 +13,7 @@ dotenv.config();
 const app = express();
 // backend/server.js
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'https://jlts-japanese-learning-tracker-uo56.vercel.app' // <--- PASTE YOUR FRONTEND URL HERE
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -31,28 +27,16 @@ if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
   console.log('NOTICE: Connecting to MongoDB (Checking for jlpt_tracker in URI...)');
 }
 
-// Add runtime error listener for better Vercel logging
-mongoose.connection.on('error', err => {
-  console.error('MongoDB runtime connection error:', err);
-});
-
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  dbName: 'jlpt_tracker',
-  serverSelectionTimeoutMS: 5000,
-  family: 4
-})
-  .then(() => {
-    console.log('MongoDB Connected Successfully');
+if (mongoose.connection.readyState === 0) {
+  mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName: 'jlpt_tracker', // Keeping dbName to ensure connection hits the correct DB
+    serverSelectionTimeoutMS: 15000
   })
-  .catch((err) => {
-    console.error('CRITICAL: MongoDB connection failed on serverless startup:', {
-      error: err.message,
-      stack: err.stack,
-      uri: process.env.MONGO_URI ? process.env.MONGO_URI.split('@')[0] + '@...' : 'MISSING'
-    });
-  });
+    .then(() => console.log('MongoDB Connected Successfully'))
+    .catch(err => console.error('MongoDB connection error:', err));
+}
 
 // Models
 const sessionSchema = new mongoose.Schema({
@@ -309,6 +293,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Ensure the app is exported for Vercel
-// Note: We use \`export default app\` because \`backend/package.json\` has \`"type": "module"\`.
-// If we used \`module.exports = app\`, Node.js would throw an ES module scope error.
-export default app;
+// Verify export for Vercel
+// WARNING: Since your backend/package.json uses "type": "module" and server.js uses `import` statements,
+// using `module.exports = app;` may throw a runtime error complaining that `module` is not defined in ES module scope.
+// If your deployment crashes, you can either:
+// 1) Revert this to `export default app;`
+// 2) Change all `import` statements to `require()` and remove "type": "module" from package.json
+module.exports = app;
