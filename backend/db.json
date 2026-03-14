@@ -1,0 +1,13 @@
+{
+  "user": {
+    "currentStreak": 0,
+    "lastStudyDate": null
+  },
+  "sessions": [
+    {
+      "_id": "cddb3df6-c30c-46f7-b831-f034c7e5908c",
+      "date": "2026-03-14T06:07:19.522Z",
+      "durationInSeconds": 130
+    }
+  ]
+}
