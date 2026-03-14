@@ -11,10 +11,14 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 dotenv.config();
 
 const app = express();
-app.use(cors({ 
-  origin: true, 
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
-  credentials: true 
+// backend/server.js
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://jlts-japanese-learning-tracker-uo56.vercel.app' // <--- PASTE YOUR FRONTEND URL HERE
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
 }));
 app.use(express.json());
 
