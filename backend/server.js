@@ -11,18 +11,32 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: true, // Reflects the request origin, or use ['http://localhost:5173', 'https://jlts-japanese-learning-tracker-uo56.vercel.app/']
+  credentials: true
+}));
 app.use(express.json());
 
 const PORT = 5000;
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, { family: 4 })
+const mongoURI = process.env.MONGO_URI;
+if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
+  console.log('NOTICE: Connecting to MongoDB (Checking for jlpt_tracker in URI...)');
+}
+
+mongoose.connect(mongoURI, {
+  family: 4,
+  dbName: 'jlpt_tracker' // Ensuring the correct database is used as requested
+})
   .then(() => {
-    console.log('Connected to MongoDB (jlpt_tracker)');
+    console.log('Successfully connected to MongoDB Cluster (jlpt_tracker)');
   })
   .catch((err) => {
-    console.error('MongoDB connection error:', err);
+    console.error('CRITICAL: MongoDB connection failed on serverless startup:', {
+      error: err.message,
+      uri: mongoURI ? mongoURI.split('@')[0] + '@...' : 'MISSING' // Masked for security
+    });
   });
 
 // Models
@@ -65,13 +79,13 @@ async function getUser() {
 app.get('/api/user/streak', async (req, res) => {
   try {
     const user = await getUser();
-    
+
     // Calculate total study time directly from the database
     const result = await Session.aggregate([
       { $group: { _id: null, total: { $sum: "$durationInSeconds" } } }
     ]);
     const totalStudyTime = result.length > 0 ? result[0].total : 0;
-    
+
     res.json({
       currentStreak: user.currentStreak,
       lastStudyDate: user.lastStudyDate,
@@ -92,14 +106,14 @@ app.post('/api/user/hiragana', async (req, res) => {
   try {
     const { character } = req.body;
     const user = await getUser();
-    
+
     const index = user.masteredHiragana.indexOf(character);
     if (index > -1) {
       user.masteredHiragana.splice(index, 1);
     } else {
       user.masteredHiragana.push(character);
     }
-    
+
     user.progress.hiragana = Math.round((user.masteredHiragana.length / 46) * 100);
     await user.save();
     res.json({ success: true, masteredHiragana: user.masteredHiragana, progress: user.progress });
@@ -114,14 +128,14 @@ app.post('/api/user/katakana', async (req, res) => {
   try {
     const { character } = req.body;
     const user = await getUser();
-    
+
     const index = user.masteredKatakana.indexOf(character);
     if (index > -1) {
       user.masteredKatakana.splice(index, 1);
     } else {
       user.masteredKatakana.push(character);
     }
-    
+
     user.progress.katakana = Math.round((user.masteredKatakana.length / 46) * 100);
     await user.save();
     res.json({ success: true, masteredKatakana: user.masteredKatakana, progress: user.progress });
@@ -136,14 +150,14 @@ app.post('/api/user/kanji', async (req, res) => {
   try {
     const { character } = req.body;
     const user = await getUser();
-    
+
     const index = user.masteredKanji.indexOf(character);
     if (index > -1) {
       user.masteredKanji.splice(index, 1);
     } else {
       user.masteredKanji.push(character);
     }
-    
+
     user.progress.kanji = Math.round((user.masteredKanji.length / 100) * 100);
     await user.save();
     res.json({ success: true, masteredKanji: user.masteredKanji, progress: user.progress });
@@ -182,13 +196,13 @@ app.get('/api/sessions', async (req, res) => {
 app.post('/api/sessions', async (req, res) => {
   try {
     const { durationInSeconds } = req.body;
-  
+
     if (!durationInSeconds || durationInSeconds <= 0) {
       return res.status(400).json({ error: 'Invalid duration' });
     }
-  
+
     const now = new Date();
-    
+
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
@@ -197,18 +211,18 @@ app.post('/api/sessions', async (req, res) => {
     });
     const [{ value: mo }, , { value: da }, , { value: ye }] = formatter.formatToParts(now);
     const todayStr = `${ye}-${mo}-${da}`; // YYYY-MM-DD in IST
-    
+
     // Calculate IST start and end bounds natively into Date objects
     const startOfDay = new Date(`${todayStr}T00:00:00+05:30`);
     const endOfDay = new Date(`${todayStr}T23:59:59.999+05:30`);
-    
+
     // Find if a session already exists for today
     let todaySession = await Session.findOne({
       date: { $gte: startOfDay, $lt: endOfDay }
     });
-  
+
     let isUpdate = false;
-  
+
     if (todaySession) {
       // Update existing session
       todaySession.durationInSeconds += durationInSeconds;
@@ -222,17 +236,17 @@ app.post('/api/sessions', async (req, res) => {
         durationInSeconds
       });
       await todaySession.save();
-      
+
       // Manage Streak
       const user = await getUser();
-      
+
       if (user.lastStudyDate) {
         // Evaluate the previously tracked study date properly into an IST Date object
         const lastDate = new Date(`${user.lastStudyDate}T00:00:00+05:30`);
-        
+
         const diffTime = Math.abs(startOfDay.getTime() - lastDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           user.currentStreak += 1;
         } else if (diffDays > 1) {
@@ -244,11 +258,15 @@ app.post('/api/sessions', async (req, res) => {
       user.lastStudyDate = todayStr;
       await user.save();
     }
-  
+
     res.json({ session: todaySession, isUpdate });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error('ERROR in POST /api/sessions (Study Session Log):', {
+      error: err.message,
+      stack: err.stack,
+      body: req.body
+    });
+    res.status(500).json({ error: 'Server Error', message: err.message });
   }
 });
 
@@ -257,11 +275,11 @@ app.delete('/api/sessions/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const session = await Session.findByIdAndDelete(id);
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);

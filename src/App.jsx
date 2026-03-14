@@ -6,6 +6,17 @@ import './App.css'
 
 const API_URL = `${API_BASE_URL}/api`
 
+// Sound Effects - Using absolute paths for public assets
+const introSound = new Audio('/intro.mp3');
+const clickSound = new Audio('/click.mp3');
+const successSound = new Audio('/success.mp3');
+
+const playSound = (audio) => {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(err => console.log('Audio playback blocked by browser:', err));
+};
+
 const speak = (text) => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // Stop current speech
@@ -50,7 +61,7 @@ const Intro = ({ onFinish }) => {
         </text>
       </svg>
       {showButton && (
-        <button className="get-started-btn animate-fade-in" onClick={onFinish}>
+        <button className="get-started-btn animate-fade-in" onClick={() => { playSound(introSound); onFinish(); }}>
           Get Started
         </button>
       )}
@@ -311,6 +322,7 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
 
     // 2. Stop the visual timer UI
     setIsRunning(false);
+    playSound(successSound);
 
     try {
       console.log('POSTing to:', `${API_URL}/sessions`);
@@ -375,16 +387,16 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
 
       <div className="timer-controls">
         {!isRunning ? (
-          <button className="btn-primary" onClick={() => setIsRunning(true)}>
+          <button className="btn-primary" onClick={() => { setIsRunning(true); playSound(clickSound); }}>
             <Play size={18} fill="currentColor" /> Start
           </button>
         ) : (
-          <button className="btn-secondary" onClick={() => setIsRunning(false)}>
+          <button className="btn-secondary" onClick={() => { setIsRunning(false); playSound(clickSound); }}>
             <Pause size={18} fill="currentColor" /> Pause
           </button>
         )}
 
-        <button className="btn-secondary" onClick={handleReset}>
+        <button className="btn-secondary" onClick={() => { handleReset(); playSound(clickSound); }}>
           <RotateCcw size={18} /> Reset
         </button>
 
