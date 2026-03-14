@@ -16,7 +16,7 @@ const PORT = 5000;
 
 // Initialize Supabase
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_KEY || '';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn('NOTICE: Supabase URL or Key is missing from environment variables.');
@@ -191,89 +191,53 @@ app.get('/api/sessions', async (req, res) => {
   }
 });
 
-// POST /api/sessions - Create or update a session for the day
+// POST /api/sessions - Create a new study session
 app.post('/api/sessions', async (req, res) => {
   try {
-    const { durationInSeconds } = req.body;
+    const { durationInSeconds, duration, category } = req.body;
+    
+    // Support both the old 'durationInSeconds' and the new 'duration' fields
+    const sessionDuration = duration || durationInSeconds;
 
-    if (!durationInSeconds || durationInSeconds <= 0) {
+    if (!sessionDuration || sessionDuration <= 0) {
       return res.status(400).json({ error: 'Invalid duration' });
     }
 
-    const now = new Date();
-
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const [{ value: mo }, , { value: da }, , { value: ye }] = formatter.formatToParts(now);
-    const todayStr = `${ye}-${mo}-${da}`; // YYYY-MM-DD in IST
-
-    // Calculate IST start and end bounds natively into Date objects
-    const startOfDay = new Date(`${todayStr}T00:00:00+05:30`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999+05:30`);
-
-    // Find if a session already exists for today
-    const { data: todaySessions, error: findError } = await supabase
+    const { data, error } = await supabase
       .from('sessions')
-      .select('*')
-      .gte('date', startOfDay.toISOString())
-      .lt('date', endOfDay.toISOString())
-      .limit(1);
+      .insert([{ 
+        duration: sessionDuration, 
+        durationInSeconds: sessionDuration, // Keeping for backward compatibility with React client if needed
+        date: new Date().toISOString(), 
+        category: category || 'general' 
+      }])
+      .select();
 
-    let todaySession = todaySessions && todaySessions.length > 0 ? todaySessions[0] : null;
-    let isUpdate = false;
+    if (error) throw error;
 
-    if (todaySession) {
-      // Update existing session
-      const updatedDuration = todaySession.durationInSeconds + durationInSeconds;
-      const { data: updatedSessions } = await supabase
-        .from('sessions')
-        .update({ durationInSeconds: updatedDuration, date: now.toISOString() })
-        .eq('id', todaySession.id)
-        .select();
-      todaySession = updatedSessions ? updatedSessions[0] : { id: todaySession.id, durationInSeconds: updatedDuration, date: now.toISOString() };
-      isUpdate = true;
-    } else {
-      // Create new session
-      const { data: newSessions } = await supabase
-        .from('sessions')
-        .insert([{ date: now.toISOString(), durationInSeconds }])
-        .select();
-      todaySession = newSessions ? newSessions[0] : { durationInSeconds, date: now.toISOString() };
+    // Optional: Could manage streaks here if desired, but removed for direct insert logic as requested.
 
-      // Manage Streak
-      const user = await getUser();
-      let newStreak = user.currentStreak || 0;
-
-      if (user.lastStudyDate) {
-        const lastDate = new Date(`${user.lastStudyDate}T00:00:00+05:30`);
-        const diffTime = Math.abs(startOfDay.getTime() - lastDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else if (diffDays > 1) {
-          newStreak = 1;
-        }
-      } else {
-        newStreak = 1;
-      }
-
-      await supabase.from('users').upsert({
-        id: user.id || 1,
-        currentStreak: newStreak,
-        lastStudyDate: todayStr,
-        progress: user.progress
-      });
-    }
-
-    res.json({ session: todaySession, isUpdate });
+    res.json({ session: data ? data[0] : null, isUpdate: false });
   } catch (err) {
     console.error('ERROR in POST /api/sessions:', err);
     res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// GET /api/stats - Dashboard stats for sessions (count & sum of durations)
+app.get('/api/stats', async (req, res) => {
+  try {
+    const { data: sessions, error } = await supabase.from('sessions').select('duration, durationInSeconds');
+    if (error) throw error;
+    
+    const count = sessions ? sessions.length : 0;
+    // Calculate sum handling both properties since we just implemented the column change requested!
+    const totalDuration = sessions ? sessions.reduce((sum, s) => sum + (s.duration || s.durationInSeconds || 0), 0) : 0;
+    
+    res.json({ count, totalDuration });
+  } catch (err) {
+    console.error('ERROR in GET /api/stats:', err);
+    res.status(500).json({ error: 'Server Error' });
   }
 });
 
