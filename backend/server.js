@@ -12,7 +12,7 @@ dotenv.config();
 
 const app = express();
 app.use(cors({ 
-  origin: [/vercel\.app$/, /^http:\/\/localhost:\d+$/], 
+  origin: true, 
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   credentials: true 
 }));
@@ -29,7 +29,8 @@ if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
 
 mongoose.connect(mongoURI, {
   family: 4,
-  dbName: 'jlpt_tracker' // Ensuring the correct database is used as requested
+  dbName: 'jlpt_tracker', // Ensuring the correct database is used as requested
+  serverSelectionTimeoutMS: 5000
 })
   .then(() => {
     console.log('Successfully connected to MongoDB Cluster (jlpt_tracker)');
