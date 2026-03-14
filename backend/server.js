@@ -31,18 +31,26 @@ if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
   console.log('NOTICE: Connecting to MongoDB (Checking for jlpt_tracker in URI...)');
 }
 
-mongoose.connect(mongoURI, {
-  family: 4,
-  dbName: 'jlpt_tracker', // Ensuring the correct database is used as requested
-  serverSelectionTimeoutMS: 5000
+// Add runtime error listener for better Vercel logging
+mongoose.connection.on('error', err => {
+  console.error('MongoDB runtime connection error:', err);
+});
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: 'jlpt_tracker',
+  serverSelectionTimeoutMS: 5000,
+  family: 4
 })
   .then(() => {
-    console.log('Successfully connected to MongoDB Cluster (jlpt_tracker)');
+    console.log('MongoDB Connected Successfully');
   })
   .catch((err) => {
     console.error('CRITICAL: MongoDB connection failed on serverless startup:', {
       error: err.message,
-      uri: mongoURI ? mongoURI.split('@')[0] + '@...' : 'MISSING' // Masked for security
+      stack: err.stack,
+      uri: process.env.MONGO_URI ? process.env.MONGO_URI.split('@')[0] + '@...' : 'MISSING'
     });
   });
 
@@ -300,4 +308,7 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// Ensure the app is exported for Vercel
+// Note: We use \`export default app\` because \`backend/package.json\` has \`"type": "module"\`.
+// If we used \`module.exports = app\`, Node.js would throw an ES module scope error.
 export default app;
