@@ -19,14 +19,21 @@ app.use(express.json());
 const PORT = 5000;
 
 // Initialize Supabase
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('NOTICE: Supabase URL or Key is missing from environment variables.');
+if (!process.env.SUPABASE_URL) {
+  console.error('Missing Supabase URL');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+let supabase;
+try {
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+  // Only try to initialize if variables exist to avoid crashing the serverless function cold start
+  if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+  }
+} catch (err) {
+  console.error('Supabase initialization error:', err.message);
+}
 
 // Helper to get or create the single user document using Supabase
 async function getUser() {
