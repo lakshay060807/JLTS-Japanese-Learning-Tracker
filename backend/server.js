@@ -1,9 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-
-dotenv.config();
 
 const app = express();
 app.use(cors({
@@ -269,5 +267,5 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Verify export for Vercel
-// Ensure module.exports = app remains at the very bottom
-module.exports = app;
+// Ensure export default app remains at the very bottom
+export default app;
