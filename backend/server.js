@@ -11,15 +11,17 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 dotenv.config();
 
 const app = express();
-app.use(cors({
-  origin: true, // Reflects the request origin, or use ['http://localhost:5173', 'https://jlts-japanese-learning-tracker-uo56.vercel.app/']
-  credentials: true
+app.use(cors({ 
+  origin: [/vercel\.app$/, /^http:\/\/localhost:\d+$/], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  credentials: true 
 }));
 app.use(express.json());
 
 const PORT = 5000;
 
 // Connect to MongoDB
+console.log('Using Mongo URI:', process.env.MONGO_URI ? 'Defined' : 'UNDEFINED');
 const mongoURI = process.env.MONGO_URI;
 if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
   console.log('NOTICE: Connecting to MongoDB (Checking for jlpt_tracker in URI...)');
