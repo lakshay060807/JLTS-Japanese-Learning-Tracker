@@ -7,7 +7,11 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-  origin: true,
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173', // Adding default Vite port just in case!
+    'https://jlts-japanese-learning-tracker.vercel.app'
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -195,27 +199,23 @@ app.get('/api/sessions', async (req, res) => {
 app.post('/api/sessions', async (req, res) => {
   try {
     const { durationInSeconds, duration, category } = req.body;
-    
-    // Support both the old 'durationInSeconds' and the new 'duration' fields
-    const sessionDuration = duration || durationInSeconds;
 
-    if (!sessionDuration || sessionDuration <= 0) {
+    // Ensure 'duration' handles legacy 'durationInSeconds' just in case
+    const finalDuration = duration || durationInSeconds;
+
+    if (!finalDuration || finalDuration <= 0) {
       return res.status(400).json({ error: 'Invalid duration' });
     }
 
+    const date = new Date().toISOString();
+    const saveCategory = category || 'general';
+
     const { data, error } = await supabase
       .from('sessions')
-      .insert([{ 
-        duration: sessionDuration, 
-        durationInSeconds: sessionDuration, // Keeping for backward compatibility with React client if needed
-        date: new Date().toISOString(), 
-        category: category || 'general' 
-      }])
+      .insert([{ duration: finalDuration, date, category: saveCategory }])
       .select();
 
     if (error) throw error;
-
-    // Optional: Could manage streaks here if desired, but removed for direct insert logic as requested.
 
     res.json({ session: data ? data[0] : null, isUpdate: false });
   } catch (err) {
@@ -229,11 +229,11 @@ app.get('/api/stats', async (req, res) => {
   try {
     const { data: sessions, error } = await supabase.from('sessions').select('duration, durationInSeconds');
     if (error) throw error;
-    
+
     const count = sessions ? sessions.length : 0;
     // Calculate sum handling both properties since we just implemented the column change requested!
     const totalDuration = sessions ? sessions.reduce((sum, s) => sum + (s.duration || s.durationInSeconds || 0), 0) : 0;
-    
+
     res.json({ count, totalDuration });
   } catch (err) {
     console.error('ERROR in GET /api/stats:', err);
