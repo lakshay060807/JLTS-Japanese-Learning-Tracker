@@ -1,17 +1,11 @@
-import crypto from 'crypto';
-import path from 'path';
-import dns from 'dns';
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
 const app = express();
-// backend/server.js
 app.use(cors({
   origin: true,
   credentials: true
@@ -20,58 +14,34 @@ app.use(express.json());
 
 const PORT = 5000;
 
-// Connect to MongoDB
-console.log('Using Mongo URI:', process.env.MONGO_URI ? 'Defined' : 'UNDEFINED');
-const mongoURI = process.env.MONGO_URI;
-if (mongoURI && !mongoURI.includes('jlpt_tracker')) {
-  console.log('NOTICE: Connecting to MongoDB (Checking for jlpt_tracker in URI...)');
+// Initialize Supabase
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_KEY || '';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('NOTICE: Supabase URL or Key is missing from environment variables.');
 }
 
-if (mongoose.connection.readyState === 0) {
-  mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName: 'jlpt_tracker', // Keeping dbName to ensure connection hits the correct DB
-    serverSelectionTimeoutMS: 15000
-  })
-    .then(() => console.log('MongoDB Connected Successfully'))
-    .catch(err => console.error('MongoDB connection error:', err));
-}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Models
-const sessionSchema = new mongoose.Schema({
-  date: { type: Date, default: Date.now },
-  durationInSeconds: { type: Number, required: true }
-});
-const Session = mongoose.model('Session', sessionSchema);
-
-const userSchema = new mongoose.Schema({
-  currentStreak: { type: Number, default: 0 },
-  lastStudyDate: { type: String, default: null },
-  progress: {
-    hiragana: { type: Number, default: 0 },
-    katakana: { type: Number, default: 0 },
-    kanji: { type: Number, default: 0 },
-  },
-  masteredHiragana: { type: [String], default: [] },
-  masteredKatakana: { type: [String], default: [] },
-  masteredKanji: { type: [String], default: [] }
-});
-const User = mongoose.model('User', userSchema);
-
-// Helper to get or create the single user document
+// Helper to get or create the single user document using Supabase
 async function getUser() {
-  let user = await User.findOne();
-  if (!user) {
-    user = new User({
-      progress: { hiragana: 0, katakana: 0, kanji: 0 },
-      masteredHiragana: [],
-      masteredKatakana: [],
-      masteredKanji: []
-    });
-    await user.save();
+  // Assuming a table 'users' with a single row. We'll find the first one.
+  const { data: users, error } = await supabase.from('users').select('*').limit(1);
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching user:', error);
   }
-  return user;
+
+  if (!users || users.length === 0) {
+    // Default user structure if table is empty or missing
+    return {
+      id: 1,
+      currentStreak: 0,
+      lastStudyDate: null,
+      progress: { hiragana: 0, katakana: 0, kanji: 0 }
+    };
+  }
+  return users[0];
 }
 
 // GET /api/user/streak - Get user streak information, progress, and total time
@@ -79,19 +49,31 @@ app.get('/api/user/streak', async (req, res) => {
   try {
     const user = await getUser();
 
-    // Calculate total study time directly from the database
-    const result = await Session.aggregate([
-      { $group: { _id: null, total: { $sum: "$durationInSeconds" } } }
-    ]);
-    const totalStudyTime = result.length > 0 ? result[0].total : 0;
+    // Calculate total study time
+    const { data: sessions } = await supabase.from('sessions').select('durationInSeconds');
+    const totalStudyTime = sessions ? sessions.reduce((sum, s) => sum + (s.durationInSeconds || 0), 0) : 0;
+
+    // Fetch masteries
+    const { data: masteries } = await supabase.from('mastery').select('character, type').eq('mastered', true);
+    const masteredHiragana = [];
+    const masteredKatakana = [];
+    const masteredKanji = [];
+
+    if (masteries) {
+      masteries.forEach(m => {
+        if (m.type === 'hiragana') masteredHiragana.push(m.character);
+        if (m.type === 'katakana') masteredKatakana.push(m.character);
+        if (m.type === 'kanji') masteredKanji.push(m.character);
+      });
+    }
 
     res.json({
       currentStreak: user.currentStreak,
       lastStudyDate: user.lastStudyDate,
-      progress: user.progress,
-      masteredHiragana: user.masteredHiragana,
-      masteredKatakana: user.masteredKatakana,
-      masteredKanji: user.masteredKanji,
+      progress: user.progress || { hiragana: 0, katakana: 0, kanji: 0 },
+      masteredHiragana,
+      masteredKatakana,
+      masteredKanji,
       totalStudyTime
     });
   } catch (err) {
@@ -100,22 +82,61 @@ app.get('/api/user/streak', async (req, res) => {
   }
 });
 
+// Helper for mastery routes
+async function toggleMastery(character, type, totalCount) {
+  // Check if it already exists
+  const { data: existing } = await supabase
+    .from('mastery')
+    .select('mastered')
+    .eq('character', character)
+    .eq('type', type)
+    .maybeSingle();
+
+  const isCurrentlyMastered = existing ? existing.mastered : false;
+  const newMasteredState = !isCurrentlyMastered;
+
+  // Upsert the new state (Supabase .upsert logic as requested)
+  // Assumes your mastery table has a composite unique key (or conflict target) on character/type or similar.
+  await supabase
+    .from('mastery')
+    .upsert(
+      { character, type, mastered: newMasteredState },
+      { onConflict: 'character,type' } // Modify this string if your conflict key differs in Postgres
+    );
+
+  // Now fetch all mastered for this type to compute progress
+  const { data: allMastered } = await supabase
+    .from('mastery')
+    .select('character')
+    .eq('type', type)
+    .eq('mastered', true);
+
+  const masteredList = allMastered ? allMastered.map(m => m.character) : [];
+  const progressVal = Math.round((masteredList.length / totalCount) * 100);
+
+  // Update user's progress in users table
+  const user = await getUser();
+  const currentProgress = user.progress || { hiragana: 0, katakana: 0, kanji: 0 };
+  const newProgress = { ...currentProgress, [type]: progressVal };
+
+  if (user.id) {
+    await supabase.from('users').upsert({
+      id: user.id || 1,
+      progress: newProgress,
+      currentStreak: user.currentStreak,
+      lastStudyDate: user.lastStudyDate
+    });
+  }
+
+  return { masteredList, progress: newProgress };
+}
+
 // POST /api/user/hiragana - Toggle hiragana mastery
 app.post('/api/user/hiragana', async (req, res) => {
   try {
     const { character } = req.body;
-    const user = await getUser();
-
-    const index = user.masteredHiragana.indexOf(character);
-    if (index > -1) {
-      user.masteredHiragana.splice(index, 1);
-    } else {
-      user.masteredHiragana.push(character);
-    }
-
-    user.progress.hiragana = Math.round((user.masteredHiragana.length / 46) * 100);
-    await user.save();
-    res.json({ success: true, masteredHiragana: user.masteredHiragana, progress: user.progress });
+    const { masteredList, progress } = await toggleMastery(character, 'hiragana', 46);
+    res.json({ success: true, masteredHiragana: masteredList, progress });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
@@ -126,18 +147,8 @@ app.post('/api/user/hiragana', async (req, res) => {
 app.post('/api/user/katakana', async (req, res) => {
   try {
     const { character } = req.body;
-    const user = await getUser();
-
-    const index = user.masteredKatakana.indexOf(character);
-    if (index > -1) {
-      user.masteredKatakana.splice(index, 1);
-    } else {
-      user.masteredKatakana.push(character);
-    }
-
-    user.progress.katakana = Math.round((user.masteredKatakana.length / 46) * 100);
-    await user.save();
-    res.json({ success: true, masteredKatakana: user.masteredKatakana, progress: user.progress });
+    const { masteredList, progress } = await toggleMastery(character, 'katakana', 46);
+    res.json({ success: true, masteredKatakana: masteredList, progress });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
@@ -148,18 +159,8 @@ app.post('/api/user/katakana', async (req, res) => {
 app.post('/api/user/kanji', async (req, res) => {
   try {
     const { character } = req.body;
-    const user = await getUser();
-
-    const index = user.masteredKanji.indexOf(character);
-    if (index > -1) {
-      user.masteredKanji.splice(index, 1);
-    } else {
-      user.masteredKanji.push(character);
-    }
-
-    user.progress.kanji = Math.round((user.masteredKanji.length / 100) * 100);
-    await user.save();
-    res.json({ success: true, masteredKanji: user.masteredKanji, progress: user.progress });
+    const { masteredList, progress } = await toggleMastery(character, 'kanji', 100);
+    res.json({ success: true, masteredKanji: masteredList, progress });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
@@ -170,9 +171,7 @@ app.post('/api/user/kanji', async (req, res) => {
 app.post('/api/user/reset-streak', async (req, res) => {
   try {
     const user = await getUser();
-    user.currentStreak = 0;
-    user.lastStudyDate = null;
-    await user.save();
+    await supabase.from('users').upsert({ id: user.id || 1, currentStreak: 0, lastStudyDate: null, progress: user.progress });
     res.json({ success: true, currentStreak: 0 });
   } catch (err) {
     console.error(err);
@@ -183,8 +182,9 @@ app.post('/api/user/reset-streak', async (req, res) => {
 // GET /api/sessions - Get all sessions (sorted newest first)
 app.get('/api/sessions', async (req, res) => {
   try {
-    const sessions = await Session.find().sort({ date: -1 });
-    res.json(sessions);
+    const { data: sessions, error } = await supabase.from('sessions').select('*').order('date', { ascending: false });
+    if (error) throw error;
+    res.json(sessions || []);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
@@ -216,55 +216,63 @@ app.post('/api/sessions', async (req, res) => {
     const endOfDay = new Date(`${todayStr}T23:59:59.999+05:30`);
 
     // Find if a session already exists for today
-    let todaySession = await Session.findOne({
-      date: { $gte: startOfDay, $lt: endOfDay }
-    });
+    const { data: todaySessions, error: findError } = await supabase
+      .from('sessions')
+      .select('*')
+      .gte('date', startOfDay.toISOString())
+      .lt('date', endOfDay.toISOString())
+      .limit(1);
 
+    let todaySession = todaySessions && todaySessions.length > 0 ? todaySessions[0] : null;
     let isUpdate = false;
 
     if (todaySession) {
       // Update existing session
-      todaySession.durationInSeconds += durationInSeconds;
-      todaySession.date = now; // update timestamp
-      await todaySession.save();
+      const updatedDuration = todaySession.durationInSeconds + durationInSeconds;
+      const { data: updatedSessions } = await supabase
+        .from('sessions')
+        .update({ durationInSeconds: updatedDuration, date: now.toISOString() })
+        .eq('id', todaySession.id)
+        .select();
+      todaySession = updatedSessions ? updatedSessions[0] : { id: todaySession.id, durationInSeconds: updatedDuration, date: now.toISOString() };
       isUpdate = true;
     } else {
       // Create new session
-      todaySession = new Session({
-        date: now,
-        durationInSeconds
-      });
-      await todaySession.save();
+      const { data: newSessions } = await supabase
+        .from('sessions')
+        .insert([{ date: now.toISOString(), durationInSeconds }])
+        .select();
+      todaySession = newSessions ? newSessions[0] : { durationInSeconds, date: now.toISOString() };
 
       // Manage Streak
       const user = await getUser();
+      let newStreak = user.currentStreak || 0;
 
       if (user.lastStudyDate) {
-        // Evaluate the previously tracked study date properly into an IST Date object
         const lastDate = new Date(`${user.lastStudyDate}T00:00:00+05:30`);
-
         const diffTime = Math.abs(startOfDay.getTime() - lastDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
-          user.currentStreak += 1;
+          newStreak += 1;
         } else if (diffDays > 1) {
-          user.currentStreak = 1;
+          newStreak = 1;
         }
       } else {
-        user.currentStreak = 1;
+        newStreak = 1;
       }
-      user.lastStudyDate = todayStr;
-      await user.save();
+
+      await supabase.from('users').upsert({
+        id: user.id || 1,
+        currentStreak: newStreak,
+        lastStudyDate: todayStr,
+        progress: user.progress
+      });
     }
 
     res.json({ session: todaySession, isUpdate });
   } catch (err) {
-    console.error('ERROR in POST /api/sessions (Study Session Log):', {
-      error: err.message,
-      stack: err.stack,
-      body: req.body
-    });
+    console.error('ERROR in POST /api/sessions:', err);
     res.status(500).json({ error: 'Server Error', message: err.message });
   }
 });
@@ -273,18 +281,15 @@ app.post('/api/sessions', async (req, res) => {
 app.delete('/api/sessions/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const session = await Session.findByIdAndDelete(id);
-
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
+    const { error } = await supabase.from('sessions').delete().eq('id', id);
+    if (error) throw error;
     res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
   }
 });
+
 // Conditional listen for local development
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
@@ -292,11 +297,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Ensure the app is exported for Vercel
 // Verify export for Vercel
-// WARNING: Since your backend/package.json uses "type": "module" and server.js uses `import` statements,
-// using `module.exports = app;` may throw a runtime error complaining that `module` is not defined in ES module scope.
-// If your deployment crashes, you can either:
-// 1) Revert this to `export default app;`
-// 2) Change all `import` statements to `require()` and remove "type": "module" from package.json
+// Ensure module.exports = app remains at the very bottom
 module.exports = app;
