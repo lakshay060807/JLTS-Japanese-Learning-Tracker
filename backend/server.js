@@ -12,20 +12,25 @@ const allowedOrigins = [
   "http://localhost:5173"
 ];
 
+// backend/server.js
+
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps)
-    if (!origin) return callback(null, true);
-
-    // Check if the origin matches our list OR is any Vercel deployment
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS blocked: Origin not allowed'));
+    // Allow local development
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
     }
+
+    // Allow ANY Vercel deployment of your project
+    if (origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Otherwise block it for security
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
