@@ -47,7 +47,12 @@ try {
 
 // Helper to get or create the single user document using Supabase
 async function getUser() {
-  const { data: user, error } = await supabase.from('mastery').select('*').eq('user_id', 'student').maybeSingle();
+  const { data: user, error } = await supabase
+    .from('mastery')
+    .select('current_streak, total_minutes, last_study_date')
+    .eq('user_id', 'student')
+    .maybeSingle();
+
   if (error) {
     console.error('Error fetching user:', error);
   }
@@ -98,7 +103,11 @@ app.get('/api/user/streak', async (req, res) => {
     res.json({
       currentStreak: user.currentStreak,
       lastStudyDate: user.lastStudyDate,
-      progress: user.progress || { hiragana: 0, katakana: 0, kanji: 0 },
+      progress: {
+        hiragana: Math.round((masteredHiragana.length / 46) * 100) || 0,
+        katakana: Math.round((masteredKatakana.length / 46) * 100) || 0,
+        kanji: Math.round((masteredKanji.length / 103) * 100) || 0
+      },
       masteredHiragana,
       masteredKatakana,
       masteredKanji,
