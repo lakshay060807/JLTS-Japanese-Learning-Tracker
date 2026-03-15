@@ -5,11 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173', // Adding default Vite port just in case!
-    'https://jlts-japanese-learning-tracker-uo56.vercel.app'
-  ],
+  origin: "https://jlts-japanese-learning-tracker-uo56.vercel.app",
   credentials: true
 }));
 app.use(express.json());
