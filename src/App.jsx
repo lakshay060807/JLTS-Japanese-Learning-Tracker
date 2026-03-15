@@ -452,7 +452,6 @@ const StudyTracker = ({ user, fetchUser }) => {
 
   const logStudyToday = async () => {
     fetchUser();
-    alert('Mastery stats refreshed from backend! 🔄');
   }
 
   return (

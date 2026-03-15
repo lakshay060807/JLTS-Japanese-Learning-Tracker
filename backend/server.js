@@ -279,11 +279,17 @@ app.post('/api/sessions', async (req, res) => {
       newStreak = 1; // It's been more than a day, start fresh!
     }
 
+    // Calculate total minutes for statistics updates
+    const { data: allSessions } = await supabase.from('sessions').select('duration');
+    const totalSeconds = allSessions ? allSessions.reduce((sum, s) => sum + (s.duration || 0), 0) : 0;
+    const totalMinutes = Math.floor(totalSeconds / 60);
+
     await supabase.from('users').upsert({
       id: user.id || 1,
       currentStreak: newStreak,
       lastStudyDate: today.toISOString(),
-      progress: user.progress
+      progress: user.progress,
+      total_minutes: totalMinutes
     });
 
     res.json({ session: data ? data[0] : null, isUpdate: false });
