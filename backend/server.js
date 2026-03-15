@@ -79,6 +79,7 @@ app.get('/api/user/streak', async (req, res) => {
     let { data: masteries, error: masteryError } = await supabase.from('mastery').select('character, type').eq('mastered', true);
     if (masteryError) {
       console.warn('Mastery table missing, using in-memory mock fallback.');
+      console.error('Exact Supabase Mastery Error:', masteryError);
       masteries = mockMasteries.filter(m => m.mastered);
     }
 
