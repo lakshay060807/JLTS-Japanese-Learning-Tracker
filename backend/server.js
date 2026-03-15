@@ -14,25 +14,16 @@ const allowedOrigins = [
 
 // backend/server.js
 
+// backend/server.js
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow local development
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
-    }
-
-    // Allow ANY Vercel deployment of your project
-    if (origin.includes('.vercel.app')) {
-      return callback(null, true);
-    }
-
-    // Otherwise block it for security
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // This tells the server to accept requests from ANY origin
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+// Add this right below the cors block to handle the "Preflight" requests
+app.options('*', cors());
 app.use(express.json());
 
 const PORT = 5000;
