@@ -15,12 +15,25 @@ const allowedOrigins = [
 // backend/server.js
 
 // backend/server.js
+// backend/server.js
+import cors from 'cors';
+
+const app = express();
+
+// This is the "Everything Allowed" setting - perfect for getting a project live
 app.use(cors({
-  origin: true, // This tells the server to accept requests from ANY origin
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: true,
+  credentials: true
 }));
+
+// Manually handle the OPTIONS request (the "pre-flight")
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 // Add this right below the cors block to handle the "Preflight" requests
 app.options('*', cors());
