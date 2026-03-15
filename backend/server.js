@@ -4,10 +4,29 @@ import cors from 'cors';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-const app = express();
+// backend/server.js
+
+const allowedOrigins = [
+  "https://jlts-japanese-learning-tracker-uo56.vercel.app",
+  "https://jlts-japanese-learning-tracker-uo56-aag080k55.vercel.app",
+  "http://localhost:5173"
+];
+
 app.use(cors({
-  origin: "https://jlts-japanese-learning-tracker-uo56.vercel.app",
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps)
+    if (!origin) return callback(null, true);
+
+    // Check if the origin matches our list OR is any Vercel deployment
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS blocked: Origin not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
 
