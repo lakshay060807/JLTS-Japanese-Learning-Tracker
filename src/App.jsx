@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { BookOpen, FileText, Languages, ChevronRight, LayoutDashboard, Play, Pause, Flame, Plus, RotateCcw, CheckCircle, Trash2, Sparkles, ArrowLeft, Volume2 } from 'lucide-react'
-import API_BASE_URL from './apiConfig'
-import './App.css'
+import { API_BASE_URL } from "./apiConfig"; // This looks for a 'named' exportimport './App.css'
 
 const API_URL = `${API_BASE_URL}/api`
 
@@ -204,11 +203,11 @@ const WordWidget = () => {
           </span>
         </div>
       </div>
-      <div 
+      <div
         style={{ position: 'absolute', right: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}
       >
-        <button 
-          className="btn-icon-audio" 
+        <button
+          className="btn-icon-audio"
           onClick={() => speak(currentWord.japanese)}
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           title="Play Pronunciation"
@@ -506,7 +505,7 @@ const StudyTracker = ({ user, fetchUser }) => {
       <div className="tracker-panel glass-panel streak-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 1rem' }}>
           <div className="streak-label">Current Streak</div>
-          <button className="btn-icon-delete" onClick={resetStreak} title="Reset Streak" style={{ opacity: 0.7 }}><RotateCcw size={16}/></button>
+          <button className="btn-icon-delete" onClick={resetStreak} title="Reset Streak" style={{ opacity: 0.7 }}><RotateCcw size={16} /></button>
         </div>
         <div className="streak-value">
           <Flame size={48} color="#fb923c" fill="#fb923c" />
@@ -691,8 +690,8 @@ const HiraganaPage = () => {
 
   const toggleMastery = async (character) => {
     // Optimistic UI update
-    setMastered(prev => 
-      prev.includes(character) 
+    setMastered(prev =>
+      prev.includes(character)
         ? prev.filter(c => c !== character)
         : [...prev, character]
     );
@@ -730,7 +729,7 @@ const HiraganaPage = () => {
     if (quizInput.toLowerCase().trim() === currentQuizItem.romaji) {
       setQuizFeedback({ type: 'success' });
       setQuizScore(prev => prev + 1);
-      
+
       // Mark as mastered if not already
       if (!mastered.includes(currentQuizItem.kana)) {
         toggleMastery(currentQuizItem.kana);
@@ -762,7 +761,7 @@ const HiraganaPage = () => {
           </p>
         </div>
       </header>
-      
+
       {!isQuiz ? (
         <>
           <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -780,8 +779,8 @@ const HiraganaPage = () => {
             {hiraganaList.map(item => {
               const isMastered = mastered.includes(item.kana);
               return (
-                <div 
-                  key={item.kana} 
+                <div
+                  key={item.kana}
                   className={`kana-card glass-panel ${isMastered ? 'mastered' : ''}`}
                   onClick={() => toggleMastery(item.kana)}
                 >
@@ -804,18 +803,18 @@ const HiraganaPage = () => {
             <div className="quiz-char-large animate-bounce-in">
               {currentQuizItem?.kana}
             </div>
-            
+
             <form onSubmit={handleQuizSubmit} className="quiz-form">
-              <input 
+              <input
                 autoFocus
-                type="text" 
+                type="text"
                 value={quizInput}
                 onChange={(e) => setQuizInput(e.target.value)}
                 placeholder="Type Romaji (e.g. ka)"
                 className={`quiz-input glass-input ${quizFeedback?.type}`}
                 disabled={!!quizFeedback}
               />
-              
+
               <div className="quiz-feedback-area">
                 {quizFeedback?.type === 'success' && (
                   <div className="feedback-msg success">
@@ -828,7 +827,7 @@ const HiraganaPage = () => {
                   </div>
                 )}
               </div>
-              
+
               <button type="submit" className="btn-primary quiz-submit-btn" disabled={!!quizFeedback || !quizInput}>
                 Submit Answer
               </button>
@@ -877,8 +876,8 @@ const KatakanaPage = () => {
   }, []);
 
   const toggleMastery = async (character) => {
-    setMastered(prev => 
-      prev.includes(character) 
+    setMastered(prev =>
+      prev.includes(character)
         ? prev.filter(c => c !== character)
         : [...prev, character]
     );
@@ -916,7 +915,7 @@ const KatakanaPage = () => {
     if (quizInput.toLowerCase().trim() === currentQuizItem.romaji) {
       setQuizFeedback({ type: 'success' });
       setQuizScore(prev => prev + 1);
-      
+
       if (!mastered.includes(currentQuizItem.kana)) {
         toggleMastery(currentQuizItem.kana);
       }
@@ -947,7 +946,7 @@ const KatakanaPage = () => {
           </p>
         </div>
       </header>
-      
+
       {!isQuiz ? (
         <>
           <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -965,8 +964,8 @@ const KatakanaPage = () => {
             {katakanaList.map(item => {
               const isMastered = mastered.includes(item.kana);
               return (
-                <div 
-                  key={item.kana} 
+                <div
+                  key={item.kana}
                   className={`kana-card glass-panel ${isMastered ? 'mastered' : ''}`}
                   onClick={() => toggleMastery(item.kana)}
                 >
@@ -989,18 +988,18 @@ const KatakanaPage = () => {
             <div className="quiz-char-large animate-bounce-in">
               {currentQuizItem?.kana}
             </div>
-            
+
             <form onSubmit={handleQuizSubmit} className="quiz-form">
-              <input 
+              <input
                 autoFocus
-                type="text" 
+                type="text"
                 value={quizInput}
                 onChange={(e) => setQuizInput(e.target.value)}
                 placeholder="Type Romaji (e.g. ka)"
                 className={`quiz-input glass-input ${quizFeedback?.type}`}
                 disabled={!!quizFeedback}
               />
-              
+
               <div className="quiz-feedback-area">
                 {quizFeedback?.type === 'success' && (
                   <div className="feedback-msg success">
@@ -1013,7 +1012,7 @@ const KatakanaPage = () => {
                   </div>
                 )}
               </div>
-              
+
               <button type="submit" className="btn-primary quiz-submit-btn" disabled={!!quizFeedback || !quizInput}>
                 Submit Answer
               </button>
@@ -1152,8 +1151,8 @@ const KanjiPage = () => {
   }, []);
 
   const toggleMastery = async (character) => {
-    setMastered(prev => 
-      prev.includes(character) 
+    setMastered(prev =>
+      prev.includes(character)
         ? prev.filter(c => c !== character)
         : [...prev, character]
     );
@@ -1191,7 +1190,7 @@ const KanjiPage = () => {
     if (quizInput.toLowerCase().trim() === currentQuizItem.meaning.toLowerCase()) {
       setQuizFeedback({ type: 'success' });
       setQuizScore(prev => prev + 1);
-      
+
       if (!mastered.includes(currentQuizItem.kanji)) {
         toggleMastery(currentQuizItem.kanji);
       }
@@ -1222,7 +1221,7 @@ const KanjiPage = () => {
           </p>
         </div>
       </header>
-      
+
       {!isQuiz ? (
         <>
           <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1240,8 +1239,8 @@ const KanjiPage = () => {
             {kanjiList.map((item, idx) => {
               const isMastered = mastered.includes(item.kanji);
               return (
-                <div 
-                  key={`${item.kanji}-${idx}`} 
+                <div
+                  key={`${item.kanji}-${idx}`}
                   className={`kana-card glass-panel ${isMastered ? 'mastered' : ''}`}
                   onClick={() => setSelectedKanji(item)}
                 >
@@ -1261,14 +1260,14 @@ const KanjiPage = () => {
           {selectedKanji && (
             <div className="modal-overlay animate-fade-in" onClick={() => setSelectedKanji(null)}>
               <div className="modal-content animate-scale-up" onClick={e => e.stopPropagation()}>
-                <div 
-                  className="modal-close" 
+                <div
+                  className="modal-close"
                   onClick={() => setSelectedKanji(null)}
                   style={{ position: 'absolute', top: '20px', right: '20px', cursor: 'pointer', color: 'var(--text-sub)' }}
                 >
                   <Plus size={24} style={{ transform: 'rotate(45deg)' }} />
                 </div>
-                
+
                 <div className="modal-body">
                   <div className="kanji-header-with-audio">
                     <h2 className="kanji-large">{selectedKanji.kanji}</h2>
@@ -1277,7 +1276,7 @@ const KanjiPage = () => {
                     </button>
                   </div>
                   <h3 className="kanji-meaning">{selectedKanji.meaning}</h3>
-                  
+
                   <div className="kanji-details-grid">
                     <div className="detail-box glass-panel" onClick={() => speak(selectedKanji.kunyomi.split('-')[0])} style={{ cursor: 'pointer' }}>
                       <div className="detail-label">Kun'yomi <Volume2 size={12} style={{ marginLeft: '4px' }} /></div>
@@ -1288,8 +1287,8 @@ const KanjiPage = () => {
                       <div className="detail-value">{selectedKanji.onyomi}</div>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     className={`memorize-btn ${mastered.includes(selectedKanji.kanji) ? 'mastered' : ''}`}
                     onClick={() => toggleMastery(selectedKanji.kanji)}
                   >
@@ -1307,18 +1306,18 @@ const KanjiPage = () => {
             <div className="quiz-char-large animate-bounce-in">
               {currentQuizItem?.kanji}
             </div>
-            
+
             <form onSubmit={handleQuizSubmit} className="quiz-form">
-              <input 
+              <input
                 autoFocus
-                type="text" 
+                type="text"
                 value={quizInput}
                 onChange={(e) => setQuizInput(e.target.value)}
                 placeholder="Type Meaning (English)"
                 className={`quiz-input glass-input ${quizFeedback?.type}`}
                 disabled={!!quizFeedback}
               />
-              
+
               <div className="quiz-feedback-area">
                 {quizFeedback?.type === 'success' && (
                   <div className="feedback-msg success">
@@ -1331,7 +1330,7 @@ const KanjiPage = () => {
                   </div>
                 )}
               </div>
-              
+
               <button type="submit" className="btn-primary quiz-submit-btn" disabled={!!quizFeedback || !quizInput}>
                 Submit Answer
               </button>
