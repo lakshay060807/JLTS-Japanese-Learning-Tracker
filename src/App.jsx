@@ -314,7 +314,7 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
       const res = await fetch(`${API_URL}/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ durationInSeconds: snapshotSeconds })
+        body: JSON.stringify({ duration: snapshotSeconds })
       });
 
       if (res.ok) {
@@ -330,7 +330,7 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
         setSessions(prev => {
           const safePrev = Array.isArray(prev) ? prev : [];
           if (isUpdate) {
-            return safePrev.map(s => s._id === session._id ? session : s);
+            return safePrev.map(s => s.id === session.id ? session : s);
           } else {
             return [session, ...safePrev];
           }
@@ -358,7 +358,7 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
         method: 'DELETE'
       })
       if (res.ok) {
-        setSessions(prev => (Array.isArray(prev) ? prev.filter(s => s._id !== id) : []))
+        setSessions(prev => (Array.isArray(prev) ? prev.filter(s => s.id !== id) : []))
       }
     } catch (err) {
       console.error('Error deleting session:', err)
@@ -398,14 +398,14 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
           <div className="empty-sessions">No sessions logged yet today</div>
         ) : (
           sessions.map(session => (
-            <div key={session._id} className="session-item">
+            <div key={session.id} className="session-item">
               <div className="session-info">
-                <span className="session-duration">{formatTime(session.durationInSeconds)}</span>
+                <span className="session-duration">{formatTime(session.duration)}</span>
                 <span className="session-date">
                   {new Date(session.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                 </span>
               </div>
-              <button className="btn-icon-delete" onClick={() => deleteSession(session._id)} title="Delete Session">
+              <button className="btn-icon-delete" onClick={() => deleteSession(session.id)} title="Delete Session">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -455,7 +455,7 @@ const StudyTracker = ({ user, fetchUser }) => {
       const res = await fetch(`${API_URL}/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ durationInSeconds: 60 })
+        body: JSON.stringify({ duration: 60 })
       })
       if (res.ok) {
         const data = await res.json()
@@ -467,7 +467,7 @@ const StudyTracker = ({ user, fetchUser }) => {
         setSessions(prev => {
           const safePrev = Array.isArray(prev) ? prev : []
           if (isUpdate) {
-            return safePrev.map(s => s._id === session._id ? session : s)
+            return safePrev.map(s => s.id === session.id ? session : s)
           } else {
             return [session, ...safePrev]
           }

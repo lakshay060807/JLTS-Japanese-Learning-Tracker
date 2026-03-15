@@ -34,6 +34,7 @@ if (!process.env.SUPABASE_URL) {
 }
 
 let supabase;
+let mockMasteries = []; // in-memory fallback if table doesn't exist yet
 try {
   const supabaseUrl = process.env.SUPABASE_URL || '';
   const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
@@ -75,7 +76,12 @@ app.get('/api/user/streak', async (req, res) => {
     const totalStudyTime = sessions ? sessions.reduce((sum, s) => sum + (s.durationInSeconds || 0), 0) : 0;
 
     // Fetch masteries
-    const { data: masteries } = await supabase.from('mastery').select('character, type').eq('mastered', true);
+    let { data: masteries, error: masteryError } = await supabase.from('mastery').select('character, type').eq('mastered', true);
+    if (masteryError) {
+      console.warn('Mastery table missing, using in-memory mock fallback.');
+      masteries = mockMasteries.filter(m => m.mastered);
+    }
+
     const masteredHiragana = [];
     const masteredKatakana = [];
     const masteredKanji = [];
@@ -106,31 +112,50 @@ app.get('/api/user/streak', async (req, res) => {
 // Helper for mastery routes
 async function toggleMastery(character, type, totalCount) {
   // Check if it already exists
-  const { data: existing } = await supabase
+  let { data: existing, error: existError } = await supabase
     .from('mastery')
     .select('mastered')
     .eq('character', character)
     .eq('type', type)
     .maybeSingle();
 
-  const isCurrentlyMastered = existing ? existing.mastered : false;
+  let isCurrentlyMastered = false;
+  if (existError) {
+    const local = mockMasteries.find(m => m.character === character && m.type === type);
+    isCurrentlyMastered = local ? local.mastered : false;
+  } else {
+    isCurrentlyMastered = existing ? existing.mastered : false;
+  }
+
   const newMasteredState = !isCurrentlyMastered;
 
   // Upsert the new state (Supabase .upsert logic as requested)
-  // Assumes your mastery table has a composite unique key (or conflict target) on character/type or similar.
-  await supabase
+  const { error: upsertError } = await supabase
     .from('mastery')
     .upsert(
       { character, type, mastered: newMasteredState },
-      { onConflict: 'character,type' } // Modify this string if your conflict key differs in Postgres
+      { onConflict: 'character,type' }
     );
 
+  if (upsertError) {
+    const existingMock = mockMasteries.find(m => m.character === character && m.type === type);
+    if (existingMock) {
+      existingMock.mastered = newMasteredState;
+    } else {
+      mockMasteries.push({ character, type, mastered: newMasteredState });
+    }
+  }
+
   // Now fetch all mastered for this type to compute progress
-  const { data: allMastered } = await supabase
+  let { data: allMastered, error: fetchError } = await supabase
     .from('mastery')
     .select('character')
     .eq('type', type)
     .eq('mastered', true);
+
+  if (fetchError) {
+    allMastered = mockMasteries.filter(m => m.type === type && m.mastered);
+  }
 
   const masteredList = allMastered ? allMastered.map(m => m.character) : [];
   const progressVal = Math.round((masteredList.length / totalCount) * 100);
