@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { BookOpen, FileText, Languages, ChevronRight, LayoutDashboard, Play, Pause, Flame, Plus, RotateCcw, CheckCircle, Trash2, Sparkles, ArrowLeft, Volume2 } from 'lucide-react'
-import { API_BASE_URL } from "./apiConfig"; // This looks for a 'named' exportimport './App.css'
+import { API_BASE_URL } from "./apiConfig";
+import './App.css'
 
 const API_URL = `${API_BASE_URL}/api`
 
@@ -26,22 +27,14 @@ const speak = (text) => {
 };
 
 const Intro = ({ onFinish }) => {
-  const [showButton, setShowButton] = useState(false)
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
       onFinish()
     }, 2500)
 
-    // Show button earlier during the faster animation
-    const buttonTimer = setTimeout(() => {
-      setShowButton(true)
-    }, 1500)
-
-    return () => {
-      clearTimeout(timer)
-      clearTimeout(buttonTimer)
-    }
+    return () => clearTimeout(timer)
   }, [onFinish])
 
   return (
@@ -58,11 +51,6 @@ const Intro = ({ onFinish }) => {
           Konnichiwa
         </text>
       </svg>
-      {showButton && (
-        <button className="get-started-btn animate-fade-in" onClick={() => onFinish()}>
-          Get Started
-        </button>
-      )}
     </div>
   )
 }
