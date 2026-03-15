@@ -259,6 +259,33 @@ app.post('/api/sessions', async (req, res) => {
 
     if (error) throw error;
 
+    // Update user streak
+    const user = await getUser();
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const todayStr = today.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' });
+    const yesterdayStr = yesterday.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' });
+    const lastStudyStr = user.lastStudyDate ? new Date(user.lastStudyDate).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }) : null;
+
+    let newStreak = user.currentStreak || 0;
+
+    if (lastStudyStr === todayStr) {
+      // Already studied today, keep streak
+    } else if (lastStudyStr === yesterdayStr) {
+      newStreak += 1;
+    } else {
+      newStreak = 1; // It's been more than a day, start fresh!
+    }
+
+    await supabase.from('users').upsert({
+      id: user.id || 1,
+      currentStreak: newStreak,
+      lastStudyDate: today.toISOString(),
+      progress: user.progress
+    });
+
     res.json({ session: data ? data[0] : null, isUpdate: false });
   } catch (err) {
     console.error('ERROR in POST /api/sessions:', err);

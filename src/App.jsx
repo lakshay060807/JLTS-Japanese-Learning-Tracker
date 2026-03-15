@@ -451,33 +451,8 @@ const StudyTracker = ({ user, fetchUser }) => {
   }
 
   const logStudyToday = async () => {
-    try {
-      const res = await fetch(`${API_URL}/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: 60 })
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const { session, isUpdate } = data || {}
-        if (!session) return
-
-        fetchUser()
-
-        setSessions(prev => {
-          const safePrev = Array.isArray(prev) ? prev : []
-          if (isUpdate) {
-            return safePrev.map(s => s.id === session.id ? session : s)
-          } else {
-            return [session, ...safePrev]
-          }
-        })
-
-        alert(isUpdate ? 'Study time added to today\'s log!' : 'Daily study logged! Streak increased! 🔥')
-      }
-    } catch (err) {
-      console.error('Error logging study:', err)
-    }
+    fetchUser();
+    alert('Mastery stats refreshed from backend! 🔄');
   }
 
   return (
