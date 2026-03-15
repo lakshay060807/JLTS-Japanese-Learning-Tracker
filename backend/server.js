@@ -8,7 +8,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5173', // Adding default Vite port just in case!
-    'https://jlts-japanese-learning-tracker.vercel.app'
+    'https://jlts-japanese-learning-tracker-uo56.vercel.app'
   ],
   credentials: true
 }));

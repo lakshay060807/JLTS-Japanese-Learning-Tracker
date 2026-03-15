@@ -7,7 +7,6 @@ import './App.css'
 const API_URL = `${API_BASE_URL}/api`
 
 // Sound Effects - Using absolute paths for public assets
-const introSound = new Audio('/intro.mp3');
 const clickSound = new Audio('/click.mp3');
 const successSound = new Audio('/success.mp3');
 
@@ -61,7 +60,7 @@ const Intro = ({ onFinish }) => {
         </text>
       </svg>
       {showButton && (
-        <button className="get-started-btn animate-fade-in" onClick={() => { playSound(introSound); onFinish(); }}>
+        <button className="get-started-btn animate-fade-in" onClick={() => onFinish()}>
           Get Started
         </button>
       )}
@@ -391,12 +390,12 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
             <Play size={18} fill="currentColor" /> Start
           </button>
         ) : (
-          <button className="btn-secondary" onClick={() => { setIsRunning(false); playSound(clickSound); }}>
+          <button className="btn-secondary" onClick={() => setIsRunning(false)}>
             <Pause size={18} fill="currentColor" /> Pause
           </button>
         )}
 
-        <button className="btn-secondary" onClick={() => { handleReset(); playSound(clickSound); }}>
+        <button className="btn-secondary" onClick={handleReset}>
           <RotateCcw size={18} /> Reset
         </button>
 
