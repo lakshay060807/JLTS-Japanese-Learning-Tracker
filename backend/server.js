@@ -34,7 +34,6 @@ if (!process.env.SUPABASE_URL) {
 }
 
 let supabase;
-let mockMasteries = []; // in-memory fallback if table doesn't exist yet
 try {
   const supabaseUrl = process.env.SUPABASE_URL || '';
   const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
@@ -48,13 +47,12 @@ try {
 
 // Helper to get or create the single user document using Supabase
 async function getUser() {
-  // Assuming a table 'users' with a single row. We'll find the first one.
-  const { data: users, error } = await supabase.from('users').select('*').limit(1);
-  if (error && error.code !== 'PGRST116') {
+  const { data: user, error } = await supabase.from('mastery').select('*').eq('user_id', 'student').maybeSingle();
+  if (error) {
     console.error('Error fetching user:', error);
   }
 
-  if (!users || users.length === 0) {
+  if (!user) {
     // Default user structure if table is empty or missing
     return {
       id: 1,
@@ -63,7 +61,11 @@ async function getUser() {
       progress: { hiragana: 0, katakana: 0, kanji: 0 }
     };
   }
-  return users[0];
+  return {
+    ...user,
+    currentStreak: user.currentStreak || user.current_streak || 0,
+    lastStudyDate: user.lastStudyDate || user.last_study_date || null
+  };
 }
 
 // GET /api/user/streak - Get user streak information, progress, and total time
@@ -78,9 +80,7 @@ app.get('/api/user/streak', async (req, res) => {
     // Fetch masteries
     let { data: masteries, error: masteryError } = await supabase.from('mastery').select('character, type').eq('mastered', true);
     if (masteryError) {
-      console.warn('Mastery table missing, using in-memory mock fallback.');
       console.error('Exact Supabase Mastery Error:', masteryError);
-      masteries = mockMasteries.filter(m => m.mastered);
     }
 
     const masteredHiragana = [];
@@ -113,50 +113,30 @@ app.get('/api/user/streak', async (req, res) => {
 // Helper for mastery routes
 async function toggleMastery(character, type, totalCount) {
   // Check if it already exists
-  let { data: existing, error: existError } = await supabase
+  let { data: existing } = await supabase
     .from('mastery')
     .select('mastered')
     .eq('character', character)
     .eq('type', type)
     .maybeSingle();
 
-  let isCurrentlyMastered = false;
-  if (existError) {
-    const local = mockMasteries.find(m => m.character === character && m.type === type);
-    isCurrentlyMastered = local ? local.mastered : false;
-  } else {
-    isCurrentlyMastered = existing ? existing.mastered : false;
-  }
-
+  const isCurrentlyMastered = existing ? existing.mastered : false;
   const newMasteredState = !isCurrentlyMastered;
 
   // Upsert the new state (Supabase .upsert logic as requested)
-  const { error: upsertError } = await supabase
+  await supabase
     .from('mastery')
     .upsert(
       { character, type, mastered: newMasteredState },
       { onConflict: 'character,type' }
     );
 
-  if (upsertError) {
-    const existingMock = mockMasteries.find(m => m.character === character && m.type === type);
-    if (existingMock) {
-      existingMock.mastered = newMasteredState;
-    } else {
-      mockMasteries.push({ character, type, mastered: newMasteredState });
-    }
-  }
-
   // Now fetch all mastered for this type to compute progress
-  let { data: allMastered, error: fetchError } = await supabase
+  let { data: allMastered } = await supabase
     .from('mastery')
     .select('character')
     .eq('type', type)
     .eq('mastered', true);
-
-  if (fetchError) {
-    allMastered = mockMasteries.filter(m => m.type === type && m.mastered);
-  }
 
   const masteredList = allMastered ? allMastered.map(m => m.character) : [];
   const progressVal = Math.round((masteredList.length / totalCount) * 100);
@@ -285,10 +265,11 @@ app.post('/api/sessions', async (req, res) => {
     const totalSeconds = allSessions ? allSessions.reduce((sum, s) => sum + (s.duration || 0), 0) : 0;
     const totalMinutes = Math.floor(totalSeconds / 60);
 
-    await supabase.from('users').upsert({
+    await supabase.from('mastery').upsert({
       id: user.id || 1,
-      currentStreak: newStreak,
-      lastStudyDate: today.toISOString(),
+      user_id: 'student',
+      current_streak: newStreak,
+      last_study_date: today.toISOString(),
       progress: user.progress,
       total_minutes: totalMinutes
     });
