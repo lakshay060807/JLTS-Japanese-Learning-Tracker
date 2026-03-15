@@ -82,35 +82,10 @@ app.get('/api/user/streak', async (req, res) => {
     const { data: sessions } = await supabase.from('sessions').select('durationInSeconds');
     const totalStudyTime = sessions ? sessions.reduce((sum, s) => sum + (s.durationInSeconds || 0), 0) : 0;
 
-    // Fetch masteries
-    let { data: masteries, error: masteryError } = await supabase.from('mastery').select('character, type').eq('mastered', true);
-    if (masteryError) {
-      console.error('Exact Supabase Mastery Error:', masteryError);
-    }
-
-    const masteredHiragana = [];
-    const masteredKatakana = [];
-    const masteredKanji = [];
-
-    if (masteries) {
-      masteries.forEach(m => {
-        if (m.type === 'hiragana') masteredHiragana.push(m.character);
-        if (m.type === 'katakana') masteredKatakana.push(m.character);
-        if (m.type === 'kanji') masteredKanji.push(m.character);
-      });
-    }
-
     res.json({
       currentStreak: user.currentStreak,
       lastStudyDate: user.lastStudyDate,
-      progress: {
-        hiragana: Math.round((masteredHiragana.length / 46) * 100) || 0,
-        katakana: Math.round((masteredKatakana.length / 46) * 100) || 0,
-        kanji: Math.round((masteredKanji.length / 103) * 100) || 0
-      },
-      masteredHiragana,
-      masteredKatakana,
-      masteredKanji,
+      progress: { hiragana: 0, katakana: 0, kanji: 0 },
       totalStudyTime
     });
   } catch (err) {
@@ -169,38 +144,17 @@ async function toggleMastery(character, type, totalCount) {
 
 // POST /api/user/hiragana - Toggle hiragana mastery
 app.post('/api/user/hiragana', async (req, res) => {
-  try {
-    const { character } = req.body;
-    const { masteredList, progress } = await toggleMastery(character, 'hiragana', 46);
-    res.json({ success: true, masteredHiragana: masteredList, progress });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error' });
-  }
+  res.json({ success: true, masteredHiragana: [], progress: { hiragana: 0, katakana: 0, kanji: 0 } });
 });
 
 // POST /api/user/katakana - Toggle katakana mastery
 app.post('/api/user/katakana', async (req, res) => {
-  try {
-    const { character } = req.body;
-    const { masteredList, progress } = await toggleMastery(character, 'katakana', 46);
-    res.json({ success: true, masteredKatakana: masteredList, progress });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error' });
-  }
+  res.json({ success: true, masteredKatakana: [], progress: { hiragana: 0, katakana: 0, kanji: 0 } });
 });
 
 // POST /api/user/kanji - Toggle kanji mastery
 app.post('/api/user/kanji', async (req, res) => {
-  try {
-    const { character } = req.body;
-    const { masteredList, progress } = await toggleMastery(character, 'kanji', 100);
-    res.json({ success: true, masteredKanji: masteredList, progress });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error' });
-  }
+  res.json({ success: true, masteredKanji: [], progress: { hiragana: 0, katakana: 0, kanji: 0 } });
 });
 
 // POST /api/user/reset-streak - Reset user streak
