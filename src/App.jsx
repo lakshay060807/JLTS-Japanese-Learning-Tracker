@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { BookOpen, FileText, Languages, ChevronRight, LayoutDashboard, Play, Pause, Square, Flame, Plus, RotateCcw, CheckCircle, Trash2, Sparkles, ArrowLeft, Volume2 } from 'lucide-react'
+import { BookOpen, FileText, Languages, ChevronRight, LayoutDashboard, Play, Pause, Flame, Plus, RotateCcw, CheckCircle, Trash2, Sparkles, ArrowLeft, Volume2 } from 'lucide-react'
 import API_BASE_URL from './apiConfig'
 import './App.css'
 
@@ -183,13 +183,11 @@ const n5Vocabulary = [
 ];
 
 const WordWidget = () => {
-  const [currentWord, setCurrentWord] = useState(null);
-
-  useEffect(() => {
+  const [currentWord] = useState(() => {
     // Pick a truly random word on every single page load
     const randomIndex = Math.floor(Math.random() * n5Vocabulary.length);
-    setCurrentWord(n5Vocabulary[randomIndex]);
-  }, []);
+    return n5Vocabulary[randomIndex];
+  });
 
   if (!currentWord) return null;
 
@@ -525,6 +523,7 @@ const StudyTracker = ({ user, fetchUser }) => {
   )
 }
 
+// eslint-disable-next-line no-unused-vars
 const MaterialCard = ({ title, description, icon: Icon, badge, to }) => {
   const navigate = useNavigate();
   return (
@@ -565,6 +564,7 @@ function Dashboard() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUser()
   }, [])
 
@@ -670,7 +670,6 @@ const hiraganaList = [
 const HiraganaPage = () => {
   const navigate = useNavigate();
   const [mastered, setMastered] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Quiz States
   const [isQuiz, setIsQuiz] = useState(false);
@@ -684,11 +683,9 @@ const HiraganaPage = () => {
       .then(res => res.json())
       .then(data => {
         setMastered(data.masteredHiragana || []);
-        setIsLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setIsLoading(false);
       });
   }, []);
 
@@ -860,7 +857,6 @@ const katakanaList = [
 const KatakanaPage = () => {
   const navigate = useNavigate();
   const [mastered, setMastered] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Quiz States
   const [isQuiz, setIsQuiz] = useState(false);
@@ -874,11 +870,9 @@ const KatakanaPage = () => {
       .then(res => res.json())
       .then(data => {
         setMastered(data.masteredKatakana || []);
-        setIsLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setIsLoading(false);
       });
   }, []);
 
@@ -1138,7 +1132,6 @@ const KanjiPage = () => {
   const navigate = useNavigate();
   const [mastered, setMastered] = useState([]);
   const [selectedKanji, setSelectedKanji] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Quiz States
   const [isQuiz, setIsQuiz] = useState(false);
@@ -1152,11 +1145,9 @@ const KanjiPage = () => {
       .then(res => res.json())
       .then(data => {
         setMastered(data.masteredKanji || []);
-        setIsLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setIsLoading(false);
       });
   }, []);
 
