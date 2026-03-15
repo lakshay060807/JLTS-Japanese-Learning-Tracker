@@ -4,19 +4,6 @@ import cors from 'cors';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-// backend/server.js
-
-const allowedOrigins = [
-  "https://jlts-japanese-learning-tracker-uo56.vercel.app",
-  "https://jlts-japanese-learning-tracker-uo56-aag080k55.vercel.app",
-  "http://localhost:5173"
-];
-
-// backend/server.js
-
-// backend/server.js
-// backend/server.js
-import cors from 'cors';
 
 const app = express();
 
