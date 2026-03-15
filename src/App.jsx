@@ -294,7 +294,8 @@ const Stopwatch = ({ onSessionUpdate, sessions, setSessions, isLoading }) => {
     return () => clearInterval(interval)
   }, [isRunning])
 
-  const formatTime = (totalSeconds) => {
+  const formatTime = (duration) => {
+    const totalSeconds = Number(duration) || 0
     const hours = Math.floor(totalSeconds / 3600)
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
